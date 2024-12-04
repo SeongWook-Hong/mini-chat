@@ -36,7 +36,7 @@ const MsgList = () => {
   return (
     <>
       <MsgInput mutate={onCreate} />
-      <ul className="flex flex-col p-3 gap-2">
+      <ul className="flex flex-col p-3 gap-2 bg-gray-800">
         {msgs.map((x) => (
           <MsgItem key={x.id} {...x} onDelete={() => onDelete(x.id)} />
         ))}
