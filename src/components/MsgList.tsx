@@ -7,12 +7,12 @@ import useInfiniteScroll from "@/hooks/useInfiniteScroll";
 
 const userIds = ["hong", "wook"];
 
-const MsgList = () => {
+const MsgList = ({ smsgs, users }) => {
   const {
     query: { userId = "" },
   } = useRouter();
 
-  const [msgs, setMsgs] = useState([]);
+  const [msgs, setMsgs] = useState(smsgs);
   const [hasNext, setHasNext] = useState(true);
   const fetchMoreEl = useRef(null);
   const intersecting = useInfiniteScroll(fetchMoreEl);
@@ -59,6 +59,7 @@ const MsgList = () => {
             {...x}
             onDelete={() => onDelete(x.id)}
             myId={userId}
+            user={users[x.userId]}
           />
         ))}
       </ul>
