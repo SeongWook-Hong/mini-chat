@@ -1,46 +1,69 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/router";
 import MsgItem from "@/components/MsgItems";
 import MsgInput from "@/components/MsgInput";
+import fetcher from "@/fetcher";
+import useInfiniteScroll from "@/hooks/useInfiniteScroll";
 
 const userIds = ["hong", "wook"];
 
-const originalMsgs = Array(50)
-  .fill(0)
-  .map((_, index) => ({
-    id: index,
-    userId: userIds[1],
-    timestamp: 1234567890123 + index * 1000 * 60,
-    text: `${index} mock text`,
-  }));
+const MsgList = ({ smsgs, users }) => {
+  const {
+    query: { userId = "" },
+  } = useRouter();
 
-const MsgList = () => {
-  const [msgs, setMsgs] = useState(originalMsgs);
-  const onCreate = (text) => {
-    const newMsg = {
-      id: msgs.length,
-      userId: userIds[0],
-      timestamp: Date.now(),
-      text: `${msgs.length} ${text}`,
-    };
+  const [msgs, setMsgs] = useState(smsgs);
+  const [hasNext, setHasNext] = useState(true);
+  const fetchMoreEl = useRef(null);
+  const intersecting = useInfiniteScroll(fetchMoreEl);
+
+  const onCreate = async (text) => {
+    const newMsg = await fetcher("post", "messages", { text, userId });
     setMsgs((msgs) => [...msgs, newMsg]);
   };
-  const onDelete = (id) => {
+  const onDelete = async (id) => {
+    const receivedId = await fetcher("delete", `/messages/${id}`, {
+      params: { userId },
+    });
     setMsgs((msgs) => {
-      const targetIndex = msgs.findIndex((msg) => msg.id === id);
+      const targetIndex = msgs.findIndex((msg) => msg.id === receivedId + "");
       if (targetIndex < 0) return msgs;
       const newMsgs = [...msgs];
       newMsgs.splice(targetIndex, 1);
       return newMsgs;
     });
   };
+
+  const getMessages = async () => {
+    const newMsgs = await fetcher("get", "/messages", {
+      params: { cursor: msgs[msgs.length - 1]?.id || "" },
+    });
+    if (newMsgs.length === 0) {
+      setHasNext(false);
+      return;
+    }
+    setMsgs([...msgs, ...newMsgs]);
+  };
+
+  useEffect(() => {
+    if (intersecting && hasNext) getMessages();
+  }, [intersecting]);
+
   return (
     <>
-      <MsgInput mutate={onCreate} />
+      {userId && <MsgInput mutate={onCreate} />}
       <ul className="flex flex-col p-3 gap-2 bg-gray-800">
         {msgs.map((x) => (
-          <MsgItem key={x.id} {...x} onDelete={() => onDelete(x.id)} />
+          <MsgItem
+            key={x.id}
+            {...x}
+            onDelete={() => onDelete(x.id)}
+            myId={userId}
+            user={users[x.userId]}
+          />
         ))}
       </ul>
+      <div ref={fetchMoreEl}></div>
     </>
   );
 };
