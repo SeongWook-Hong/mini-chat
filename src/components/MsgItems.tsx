@@ -1,11 +1,11 @@
-const MsgItem = ({ userId, timestamp, text, onDelete, myId, user }) => {
+const MsgItem = ({ timestamp, text, onDelete, myId, user }) => {
   return (
     <li>
-      <h2 className="text-white pl-[2px] pb-[1px]">{user.nickname}</h2>
+      <h2 className="text-white pl-[2px] pb-[1px]">{user?.nickname}</h2>
       <div className="flex items-end gap-3">
         <div className="relative border-[1px] border-black rounded-md px-3 py-2 max-w-[50%] w-fit break-words text-xl bg-yellow-300">
           {text}
-          {myId === userId && (
+          {myId === user?.id && (
             <button
               className="absolute -top-5 right-0 text-xs text-gray-500 hover:text-red-500"
               onClick={onDelete}

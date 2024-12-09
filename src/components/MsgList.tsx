@@ -2,52 +2,63 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import MsgItem from "@/components/MsgItems";
 import MsgInput from "@/components/MsgInput";
-import fetcher from "@/fetcher";
+import { fetcher, QueryKeys } from "@/queryClient";
 import useInfiniteScroll from "@/hooks/useInfiniteScroll";
-
-const userIds = ["hong", "wook"];
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  CREATE_MESSAGE,
+  DELETE_MESSAGE,
+  GET_MESSAGES,
+} from "@/graphql/message";
 
 const MsgList = ({ smsgs, users }) => {
+  const client = useQueryClient();
   const {
     query: { userId = "" },
   } = useRouter();
 
   const [msgs, setMsgs] = useState(smsgs);
-  const [hasNext, setHasNext] = useState(true);
-  const fetchMoreEl = useRef(null);
-  const intersecting = useInfiniteScroll(fetchMoreEl);
 
-  const onCreate = async (text) => {
-    const newMsg = await fetcher("post", "messages", { text, userId });
-    setMsgs((msgs) => [...msgs, newMsg]);
-  };
-  const onDelete = async (id) => {
-    const receivedId = await fetcher("delete", `/messages/${id}`, {
-      params: { userId },
-    });
-    setMsgs((msgs) => {
-      const targetIndex = msgs.findIndex((msg) => msg.id === receivedId + "");
-      if (targetIndex < 0) return msgs;
-      const newMsgs = [...msgs];
-      newMsgs.splice(targetIndex, 1);
-      return newMsgs;
-    });
-  };
+  const { mutate: onCreate } = useMutation({
+    mutationFn: ({ text }) => fetcher(CREATE_MESSAGE, { text, userId }),
+    onSuccess: ({ createMessage }) => {
+      client.setQueryData(QueryKeys.MESSAGES, (old) => {
+        return {
+          messages: [createMessage, ...old.messages],
+        };
+      });
+    },
+  });
 
-  const getMessages = async () => {
-    const newMsgs = await fetcher("get", "/messages", {
-      params: { cursor: msgs[msgs.length - 1]?.id || "" },
-    });
-    if (newMsgs.length === 0) {
-      setHasNext(false);
-      return;
-    }
-    setMsgs([...msgs, ...newMsgs]);
-  };
+  const { mutate: onDelete } = useMutation({
+    mutationFn: (id) => fetcher(DELETE_MESSAGE, { id, userId }),
+    onSuccess: ({ deleteMessage: deletedId }) => {
+      client.setQueryData(QueryKeys.MESSAGES, (old) => {
+        const targetIndex = old.messages.findIndex(
+          (msg) => msg.id === deletedId
+        );
+        if (targetIndex < 0) return old;
+        const newMsgs = [...old.messages];
+        newMsgs.splice(targetIndex, 1);
+        return { messages: newMsgs };
+      });
+    },
+  });
+
+  const { data, error, isError } = useQuery({
+    queryKey: QueryKeys.MESSAGES,
+    queryFn: () => fetcher(GET_MESSAGES),
+  });
 
   useEffect(() => {
-    if (intersecting && hasNext) getMessages();
-  }, [intersecting]);
+    if (!data?.messages) return;
+    setMsgs(data.messages);
+  }, [data?.messages]);
+
+  if (isError) {
+    console.error(error);
+    return null;
+  }
 
   return (
     <>
@@ -59,11 +70,9 @@ const MsgList = ({ smsgs, users }) => {
             {...x}
             onDelete={() => onDelete(x.id)}
             myId={userId}
-            user={users[x.userId]}
           />
         ))}
       </ul>
-      <div ref={fetchMoreEl}></div>
     </>
   );
 };
