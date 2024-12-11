@@ -25,17 +25,6 @@ const messageResolver = {
       setMsgs(db.messages);
       return newMsg;
     },
-    updateMessage: (parent, { id, text, userId }, { db }) => {
-      const targetIndex = db.messages.findIndex((msg) => msg.id === id);
-      if (targetIndex < 0) throw Error("Not Found");
-      if (db.messages[targetIndex].userId !== userId)
-        throw Error("Different ID");
-
-      const newMsg = { ...db.messages[targetIndex], text: text };
-      db.messages.splice(targetIndex, 1, newMsg);
-      setMsgs(db.messages);
-      return newMsg;
-    },
     deleteMessage: (parent, { id, userId }, { db }) => {
       const targetIndex = db.messages.findIndex((msg) => msg.id === id);
       if (targetIndex < 0) throw "메시지가 없습니다";
