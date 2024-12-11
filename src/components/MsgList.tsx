@@ -2,29 +2,44 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import MsgItem from "@/components/MsgItems";
 import MsgInput from "@/components/MsgInput";
-import { fetcher, QueryKeys } from "@/queryClient";
+import {
+  fetcher,
+  findTargetMsgIndex,
+  QueryKeys,
+  getNewMessages,
+} from "@/queryClient";
 import useInfiniteScroll from "@/hooks/useInfiniteScroll";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   CREATE_MESSAGE,
   DELETE_MESSAGE,
   GET_MESSAGES,
 } from "@/graphql/message";
 
-const MsgList = ({ smsgs, users }) => {
+const MsgList = ({ smsgs }) => {
   const client = useQueryClient();
   const {
     query: { userId = "" },
   } = useRouter();
 
-  const [msgs, setMsgs] = useState(smsgs);
+  const [msgs, setMsgs] = useState([{ messages: smsgs }]);
+  const fetchMoreEl = useRef(null);
+  const intersecting = useInfiniteScroll(fetchMoreEl);
 
   const { mutate: onCreate } = useMutation({
     mutationFn: ({ text }) => fetcher(CREATE_MESSAGE, { text, userId }),
     onSuccess: ({ createMessage }) => {
       client.setQueryData(QueryKeys.MESSAGES, (old) => {
         return {
-          messages: [createMessage, ...old.messages],
+          pageParam: old.pageParam,
+          pages: [
+            { messages: [createMessage, ...old.pages[0].messages] },
+            ...old.pages.slice(1),
+          ],
         };
       });
     },
@@ -34,26 +49,38 @@ const MsgList = ({ smsgs, users }) => {
     mutationFn: (id) => fetcher(DELETE_MESSAGE, { id, userId }),
     onSuccess: ({ deleteMessage: deletedId }) => {
       client.setQueryData(QueryKeys.MESSAGES, (old) => {
-        const targetIndex = old.messages.findIndex(
-          (msg) => msg.id === deletedId
+        const { pageIndex, msgIndex } = findTargetMsgIndex(
+          old.pages,
+          deletedId
         );
-        if (targetIndex < 0) return old;
-        const newMsgs = [...old.messages];
-        newMsgs.splice(targetIndex, 1);
-        return { messages: newMsgs };
+        if (pageIndex < 0 || msgIndex < 0) return old;
+        const newMsgs = getNewMessages(old);
+        newMsgs.pages[pageIndex].messages.splice(msgIndex, 1);
+        return newMsgs;
       });
     },
   });
 
-  const { data, error, isError } = useQuery({
-    queryKey: QueryKeys.MESSAGES,
-    queryFn: () => fetcher(GET_MESSAGES),
-  });
+  const { data, error, isError, fetchNextPage, hasNextPage } = useInfiniteQuery(
+    {
+      queryKey: QueryKeys.MESSAGES,
+      queryFn: ({ pageParam = "" }) =>
+        fetcher(GET_MESSAGES, { cursor: pageParam }),
+      getNextPageParam: ({ messages }) => {
+        return messages?.[messages.length - 1]?.id;
+      },
+    }
+  );
 
   useEffect(() => {
-    if (!data?.messages) return;
-    setMsgs(data.messages);
-  }, [data?.messages]);
+    if (!data?.pages) return;
+
+    setMsgs(data.pages);
+  }, [data?.pages]);
+
+  useEffect(() => {
+    if (intersecting && hasNextPage) fetchNextPage();
+  }, [intersecting, hasNextPage]);
 
   if (isError) {
     console.error(error);
@@ -64,15 +91,18 @@ const MsgList = ({ smsgs, users }) => {
     <>
       {userId && <MsgInput mutate={onCreate} />}
       <ul className="flex flex-col p-3 gap-2 bg-gray-800">
-        {msgs.map((x) => (
-          <MsgItem
-            key={x.id}
-            {...x}
-            onDelete={() => onDelete(x.id)}
-            myId={userId}
-          />
-        ))}
+        {msgs.map(({ messages }) =>
+          messages.map((x) => (
+            <MsgItem
+              key={x.id}
+              {...x}
+              onDelete={() => onDelete(x.id)}
+              myId={userId}
+            />
+          ))
+        )}
       </ul>
+      <div ref={fetchMoreEl} />
     </>
   );
 };
