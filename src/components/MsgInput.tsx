@@ -1,6 +1,6 @@
 import { useRef } from "react";
 
-const MsgInput = ({ mutate }) => {
+const MsgInput = ({ mutate, id = undefined }) => {
   const textRef = useRef(null);
 
   const onSubmit = (e) => {
@@ -8,7 +8,7 @@ const MsgInput = ({ mutate }) => {
     e.stopPropagation();
     const text = textRef.current.value;
     textRef.current.value = "";
-    mutate(text);
+    mutate({ text, id });
   };
   return (
     <form onSubmit={onSubmit}>
