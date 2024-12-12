@@ -11,9 +11,18 @@ const MsgInput = ({ mutate, id = undefined }) => {
     mutate({ text, id });
   };
   return (
-    <form onSubmit={onSubmit}>
-      <textarea ref={textRef} placeholder="내용을 입력하세요" />
-      <button type="submit">완료</button>
+    <form
+      className="flex justify-center w-[100%] px-10 py-4 gap-6 bg-gray-800"
+      onSubmit={onSubmit}
+    >
+      <textarea
+        className="w-[90%] text-center rounded-2xl bg-gray-600 text-white"
+        ref={textRef}
+        placeholder="내용을 입력하세요"
+      />
+      <button className="w-12 rounded-2xl bg-gray-600 text-white" type="submit">
+        ▶
+      </button>
     </form>
   );
 };
