@@ -1,8 +1,9 @@
+import { DocumentNode } from "graphql";
 import request from "graphql-request";
 
 const URL = "http://localhost:8000/graphql";
 
-export const fetcher = (query, variables = {}) =>
+export const fetcher = (query: DocumentNode, variables = {}) =>
   request(URL, query, variables);
 
 export const QueryKeys = {
@@ -12,17 +13,17 @@ export const QueryKeys = {
   USER: "USER",
 };
 
-export const findTargetMsgIndex = (pages, id) => {
+export const findTargetMsgIndex = (pages: [], id: string) => {
   let msgIndex = -1;
-  const pageIndex = pages.findIndex(({ messages }) => {
-    msgIndex = messages.findIndex((msg) => msg.id === id);
+  const pageIndex = pages.findIndex(({ messages }: { messages: [] }) => {
+    msgIndex = messages.findIndex((msg: { id: string }) => msg.id === id);
     if (msgIndex > -1) return true;
     return false;
   });
   return { pageIndex, msgIndex };
 };
 
-export const getNewMessages = (old) => ({
+export const getNewMessages = (old: { pageParams: []; pages: [] }) => ({
   pageParams: old.pageParams,
   pages: old.pages.map(({ messages }) => ({ messages: [...messages] })),
 });

@@ -42,22 +42,8 @@ export const CREATE_MESSAGE = gql`
   }
 `;
 
-export const UPDATE_MESSAGE = gql`
-  mutation CREATE_MESSAGE($id: ID!, $text: String!, $userId: ID!) {
-    updateMessage(id: $id, text: $text, userId: $userId) {
-      id
-      text
-      user {
-        id
-        nickname
-      }
-      timestamp
-    }
-  }
-`;
-
 export const DELETE_MESSAGE = gql`
   mutation DELETE_MESSAGE($id: ID!, $userId: ID!) {
-    updateMessage(id: $id, userId: $userId)
+    deleteMessage(id: $id, userId: $userId)
   }
 `;
