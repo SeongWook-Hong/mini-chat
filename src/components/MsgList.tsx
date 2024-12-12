@@ -20,57 +20,78 @@ import {
   GET_MESSAGES,
 } from "@/graphql/message";
 
-const MsgList = ({ smsgs }) => {
+interface Props {
+  smsgs: [
+    {
+      id: string;
+      text: string;
+      userId: string;
+      timestamp: string;
+      user: {
+        id: string;
+        nickname: string;
+      };
+    }
+  ];
+}
+const MsgList = ({ smsgs }: Props) => {
   const client = useQueryClient();
   const {
     query: { userId = "" },
   } = useRouter();
 
   const [msgs, setMsgs] = useState([{ messages: smsgs }]);
-  const fetchMoreEl = useRef(null);
+  const fetchMoreEl = useRef<HTMLDivElement>(null);
   const intersecting = useInfiniteScroll(fetchMoreEl);
 
-  const TopRef = useRef(null);
+  const TopRef = useRef<HTMLDivElement>(null);
 
   const { mutate: onCreate } = useMutation({
-    mutationFn: ({ text }) => fetcher(CREATE_MESSAGE, { text, userId }),
-    onSuccess: ({ createMessage }) => {
-      client.setQueryData(QueryKeys.MESSAGES, (old) => {
-        return {
-          pageParams: old.pageParams,
-          pages: [
-            { messages: [createMessage, ...old.pages[0].messages] },
-            ...old.pages.slice(1),
-          ],
-        };
-      });
+    mutationFn: ({ text }: { text: string }) =>
+      fetcher(CREATE_MESSAGE, { text, userId }),
+    onSuccess: ({ createMessage }: { createMessage: string }) => {
+      client.setQueryData(
+        [QueryKeys.MESSAGES],
+        (old: { pageParams: []; pages: [{ messages: string }] }) => {
+          return {
+            pageParams: old.pageParams,
+            pages: [
+              { messages: [createMessage, ...old.pages[0].messages] },
+              ...old.pages.slice(1),
+            ],
+          };
+        }
+      );
       TopRef.current?.scrollIntoView({ block: "start" });
     },
   });
 
   const { mutate: onDelete } = useMutation({
-    mutationFn: (id) => fetcher(DELETE_MESSAGE, { id, userId }),
-    onSuccess: ({ deleteMessage: deletedId }) => {
-      client.setQueryData(QueryKeys.MESSAGES, (old) => {
-        const { pageIndex, msgIndex } = findTargetMsgIndex(
-          old.pages,
-          deletedId
-        );
-        if (pageIndex < 0 || msgIndex < 0) return old;
-        const newMsgs = getNewMessages(old);
-        newMsgs.pages[pageIndex].messages.splice(msgIndex, 1);
-        return newMsgs;
-      });
+    mutationFn: (id: string) => fetcher(DELETE_MESSAGE, { id, userId }),
+    onSuccess: ({ deleteMessage: deletedId }: { deleteMessage: string }) => {
+      client.setQueryData(
+        [QueryKeys.MESSAGES],
+        (old: { pageParams: []; pages: [] }) => {
+          const { pageIndex, msgIndex } = findTargetMsgIndex(
+            old.pages,
+            deletedId
+          );
+          if (pageIndex < 0 || msgIndex < 0) return old;
+          const newMsgs = getNewMessages(old);
+          newMsgs.pages[pageIndex].messages.splice(msgIndex, 1);
+          return newMsgs;
+        }
+      );
     },
   });
 
   const { data, error, isError, fetchNextPage, hasNextPage } = useInfiniteQuery(
     {
-      queryKey: QueryKeys.MESSAGES,
-      queryFn: ({ pageParam = "" }) => {
+      queryKey: [QueryKeys.MESSAGES],
+      queryFn: ({ pageParam = "" }: { pageParam?: string }) => {
         return fetcher(GET_MESSAGES, { cursor: pageParam });
       },
-      getNextPageParam: ({ messages }) => {
+      getNextPageParam: ({ messages }: { messages: [{ id: string }] }) => {
         return messages?.[messages.length - 1]?.id;
       },
     }

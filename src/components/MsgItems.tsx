@@ -1,4 +1,14 @@
-const MsgItem = ({ timestamp, text, onDelete, myId, user }) => {
+interface Props {
+  timestamp: string;
+  text: string;
+  onDelete: () => void;
+  myId: string | string[];
+  user: {
+    id: string;
+    nickname: string;
+  };
+}
+const MsgItem = ({ timestamp, text, onDelete, myId, user }: Props) => {
   const isMyMsg = myId === user?.id;
   return (
     <li className={`flex ${isMyMsg ? "flex-row-reverse" : ""}`}>

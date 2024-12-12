@@ -3,11 +3,22 @@ import { fetcher } from "@/queryClient";
 import { GET_MESSAGES } from "@/graphql/message";
 import { GET_USERS } from "@/graphql/user";
 
-const Home = ({ smsgs, users }) => {
+interface Props {
+  smsgs: [
+    {
+      id: string;
+      text: string;
+      userId: string;
+      timestamp: string;
+      user: { id: string; nickname: string };
+    }
+  ];
+  users: [{ id: string; nickname: string }];
+}
+const Home = ({ smsgs, users }: Props) => {
   return (
     <>
-      <h1>title</h1>
-      <MsgList smsgs={smsgs} users={users} />
+      <MsgList smsgs={smsgs} />
     </>
   );
 };

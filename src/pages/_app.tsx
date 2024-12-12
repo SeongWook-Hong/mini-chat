@@ -8,7 +8,7 @@ import type { AppProps } from "next/app";
 import { useRef } from "react";
 
 export default function App({ Component, pageProps }: AppProps) {
-  const clientRef = useRef(null);
+  const clientRef = useRef<QueryClient | null>(null);
   const getClient = () => {
     if (!clientRef.current)
       clientRef.current = new QueryClient({
